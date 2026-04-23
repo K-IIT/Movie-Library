@@ -3,10 +3,12 @@ from tkinter import ttk, messagebox
 import json
 import os
 
+# --- Конфигурация ---
 DATA_FILE = 'movies.json'
 MAX_TITLE_LEN = 100
 MAX_GENRE_LEN = 50
 
+# --- Работа с данными ---
 def load_movies():
     try:
         if os.path.exists(DATA_FILE):
@@ -24,6 +26,7 @@ def save_movies(movies):
     except OSError as e:
         messagebox.showerror("Ошибка файла", f"Не удалось сохранить данные: {e}")
 
+# --- Логика приложения ---
 class MovieLibraryApp:
     def __init__(self, root):
         self.root = root
@@ -31,7 +34,7 @@ class MovieLibraryApp:
         self.root.geometry("800x600")
         self.movies = load_movies()
         self.create_widgets()
-        self.update_treeview()
+        self.update_treeview()  # Загрузка данных при старте
 
     def create_widgets(self):
         # --- Поля ввода ---
@@ -75,9 +78,13 @@ class MovieLibraryApp:
         # --- Таблица фильмов ---
         columns = ("title", "genre", "year", "rating")
         self.tree = ttk.Treeview(self.root, columns=columns, show="headings")
+        
+        # Настройка заголовков и ширины колонок
         for col in columns:
-            self.tree.heading(col, text={"title": "Название", "genre": "Жанр", "year": "Год", "rating": "Рейтинг"}[col])
+            header_text = {"title": "Название", "genre": "Жанр", "year": "Год", "rating": "Рейтинг"}[col]
+            self.tree.heading(col, text=header_text)
             self.tree.column(col, minwidth=0, width=180)
+            
         self.tree.pack(expand=True, fill='both', padx=10, pady=10)
 
     def add_movie(self):
@@ -86,6 +93,7 @@ class MovieLibraryApp:
         year_str = self.entry_year.get().strip()
         rating_str = self.entry_rating.get().strip()
 
+        # Валидация полей
         if not (title and genre and year_str and rating_str):
             messagebox.showerror("Ошибка", "Все поля должны быть заполнены!")
             return
@@ -94,7 +102,7 @@ class MovieLibraryApp:
             messagebox.showerror("Ошибка", "Превышена максимальная длина строки.")
             return
 
-        if not year_str.isdigit() or int(year_str) < 1895:  # Первый фильм был в 1895 году
+        if not year_str.isdigit() or int(year_str) < 1895:
             messagebox.showerror("Ошибка", "Год должен быть числом и не раньше 1895.")
             return
 
@@ -116,17 +124,43 @@ class MovieLibraryApp:
 
         self.movies.append(movie)
         save_movies(self.movies)
-        self.update_treeview()
         
     def apply_filter(self):
-        genre = self.filter_genre.get().strip().lower()
-        
-        year_str = self.filter_year.get().strip()
-        
-        filter_year = None
-        
-        if year_str:
-            if not year_str.isdigit() or int(year_str) < 1895:
-                messagebox.showerror("Ошибка", "Год должен быть числом и не раньше 1895.")
-                return
-            filter_year = int(year_str)
+         genre = self.filter_genre.get().strip().lower()
+         year_str = self.filter_year.get().strip()
+         
+         filter_year = None
+         if year_str:
+             if not year_str.isdigit() or int(year_str) < 1895:
+                 messagebox.showerror("Ошибка", "Год должен быть числом и не раньше 1895.")
+                 return
+             filter_year = int(year_str)
+         
+         filtered_movies = []
+         for movie in self.movies:
+             if genre and movie["genre"].lower() != genre:
+                 continue
+             if filter_year is not None and movie["year"] != filter_year:
+                 continue
+             filtered_movies.append(movie)
+         
+         self.display_movies(filtered_movies)
+    
+    def display_movies(self, movies_to_show):
+         # Очистка таблицы перед заполнением новыми данными
+         for i in self.tree.get_children():
+             self.tree.delete(i)
+         # Вставка отфильтрованных или всех фильмов в таблицу
+         for movie in movies_to_show:
+             self.tree.insert("", "end", values=(movie["title"], movie["genre"], movie["year"], movie["rating"]))
+    
+    def update_treeview(self):
+         # Отображает все фильмы из self.movies в таблице при старте или после добавления
+         self.display_movies(self.movies)
+
+
+# --- Точка входа ---
+if __name__ == '__main__':
+    root = tk.Tk()
+    app = MovieLibraryApp(root)
+    root.mainloop()
